@@ -1,0 +1,24 @@
+https://github.com/jgraph/docker-drawio
+
+
+Changing draw.io configuration
+Method 1 (Build you custom image with setting pre-loaded)
+
+    Edit PreConfig.js & PostConfig.js files (next to Dockerfile in debian or alpine folders)
+    Build the docker image
+
+Method 2 (Using existing running docker container)
+
+    Edit PreConfig.js & PostConfig.js files (next to Dockerfile in debian or alpine folders)
+    Copy these files to docker container
+
+docker cp PreConfig.js draw:/usr/local/tomcat/webapps/draw/js/
+docker cp PostConfig.js draw:/usr/local/tomcat/webapps/draw/js/
+
+Method 3 (Bind configuration files into the container when started)
+
+    This method allows changing the configuration files directly on the host without invoking any other docker commands. It can be used for testing
+    Edit PreConfig.js & PostConfig.js files (next to Dockerfile in debian or alpine folders)
+    From within the directory that contained the configuration files, run the following command to start docker container
+    Note: self-contained docker-compose file already mount the configuration files into the container
+

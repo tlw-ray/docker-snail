@@ -1,0 +1,83 @@
+version: '2'
+services:
+
+  web:
+    image: 172.16.0.183:8082/dcs/awx_web:9.1.0
+    container_name: awx_web
+    depends_on:
+      - rabbitmq
+      - memcached
+      - postgres
+    ports:
+      - "8002:8052"
+    hostname: awxweb
+    user: root
+    restart: unless-stopped
+    volumes:
+      - "~/.awx/awxcompose/SECRET_KEY:/etc/tower/SECRET_KEY"
+      - "~/.awx/awxcompose/environment.sh:/etc/tower/conf.d/environment.sh"
+      - "~/.awx/awxcompose/credentials.py:/etc/tower/conf.d/credentials.py"
+      - "~/.awx/awxcompose/nginx.conf:/etc/nginx/nginx.conf:ro"
+      - "~/.awx/projects:/var/lib/awx/projects:rw"
+    environment:
+      http_proxy: 
+      https_proxy: 
+      no_proxy: 
+
+  task:
+    image: 172.16.0.183:8082/dcs/awx_task:9.1.0
+    container_name: awx_task
+    depends_on:
+      - rabbitmq
+      - memcached
+      - web
+      - postgres
+    hostname: awx
+    user: root
+    restart: unless-stopped
+    volumes:
+      - "~/.awx/awxcompose/SECRET_KEY:/etc/tower/SECRET_KEY"
+      - "~/.awx/awxcompose/environment.sh:/etc/tower/conf.d/environment.sh"
+      - "~/.awx/awxcompose/credentials.py:/etc/tower/conf.d/credentials.py"
+      - "~/.awx/projects:/var/lib/awx/projects:rw"
+    environment:
+      http_proxy: 
+      https_proxy: 
+      no_proxy: 
+
+  rabbitmq:
+    image: 172.16.0.183:8082/dcs/awx_rabbitmq:3.7.4
+    container_name: awx_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_VHOST: "awx"
+      RABBITMQ_DEFAULT_USER: "guest"
+      RABBITMQ_DEFAULT_PASS: "awxpass"
+      RABBITMQ_ERLANG_COOKIE: cookiemonster
+      http_proxy: 
+      https_proxy: 
+      no_proxy: 
+
+  memcached:
+    image: "172.16.0.183:8082/dcs/memcached:alpine"
+    container_name: awx_memcached
+    restart: unless-stopped
+    environment:
+      http_proxy: 
+      https_proxy: 
+      no_proxy: 
+
+  postgres:
+    image: 172.16.0.183:8082/dcs/postgres:10
+    container_name: awx_postgres
+    restart: unless-stopped
+    volumes:
+      - ~/.awx/pgdocker/10/data/:/var/lib/postgresql/data/pgdata:Z
+    environment:
+      POSTGRES_USER: awx
+      POSTGRES_PASSWORD: awxpass
+      POSTGRES_DB: awx
+      PGDATA: /var/lib/postgresql/data/pgdata
+      http_proxy: 
+      https_proxy: 
+      no_proxy: 

@@ -5,4 +5,4 @@ docker run \
 -v $PWD/data:/data \
 --name AP_Portainer \
 --restart always \
-tlwtlw/portainer:20180518
+portainer/portainer

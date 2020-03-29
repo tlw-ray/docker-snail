@@ -1,4 +1,5 @@
 .idea/
-portainer/data/
 draw/js/
+filezilla/config/
+emby/config/
 **/data/

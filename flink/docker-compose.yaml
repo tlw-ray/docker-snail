@@ -2,7 +2,8 @@ version: "2.1"
 services:
   jobmanager:
     #container_name: Flink_JobManager
-    image: 172.16.0.183:8082/dcs/flink:1.8.0-190602
+    #image: 172.16.0.183:8082/dcs/flink:1.8.0-190602
+    image: flink
     expose:
       - "6123"
     ports:
@@ -13,7 +14,8 @@ services:
 
   taskmanager:
     #container_name: Flink_TaskManager
-    image: 172.16.0.183:8082/dcs/flink:1.8.0-190602
+    #image: 172.16.0.183:8082/dcs/flink:1.8.0-190602
+    image: flink
     expose:
       - "6121"
       - "6122"

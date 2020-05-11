@@ -1,1 +1,1 @@
-docker run --name NB_Scipy -d -p 10005:8888 jupyter/nbviewer
+docker run --name NB_Viewer -d -p 10005:8080 jupyter/nbviewer

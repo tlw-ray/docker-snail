@@ -1,0 +1,2978 @@
+---
+swagger: "2.0"
+info:
+  description: |
+    岸桥API是基于HTTP的API. 岸桥UI使用它，通过该HTTP API可以完成所有的界面操作.
+
+    # 认证
+
+    大多数API端点都需要进行身份验证以及使用某种级别的授权。
+    岸桥API使用JSON Web令牌管理身份验证，因此需要在每个请求的`Authorization`标头中提供一个令牌
+    带有`Bearer`身份验证机制。
+
+    例如:
+    ```
+    Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOjEsImV4cCI6MTQ5OTM3NjE1NH0.NJ6vE8FY1WG6jsRQzfMqeatJ4vh2TWAeeYfDhP71YEE
+    ```
+
+    # 安全
+    每个API端点都有一个关联的访问策略，该策略记录在每个端点的说明中。
+
+    提供不同的访问策略:
+    - 公共访问
+    - 验证访问
+    - 禁止访问
+    - 管理员访问权限
+
+    ### 公共访问
+
+    使用此访问策略访问端点不需要身份验证。
+
+    ### 验证访问
+
+    使用此访问策略访问端点需要进行身份验证。
+
+    ### 禁止访问
+
+    使用此访问策略访问端点需要进行身份验证。
+    可以添加额外的检查以确保授予对资源的访问权限。返回的数据也可能被过滤。
+
+    ### 管理员访问权限
+
+    使用此访问策略访问端点需要身份验证以及管理员角色。
+
+    # 执行容器请求
+
+    岸桥 **不需要** 公开特定的端点来管理容器资源（创建容器，移除卷等）。
+
+    相反，它充当容器HTTP API的反向代理。这意味着可以**通过** 岸桥HTTP API执行容器请求。
+
+    为此，可以使用`/endpoints/{id}/docker` 岸桥 API端点（详细见Docker Swagger接口文档）。这个
+    端点具有受限的访问策略，因此仍然需要进行身份验证才能查询该端点。此端点上的任何查询都将被代理到
+    关联端点的容器API（请求和响应对象与容器API中记录的相同）。
+
+    **注意**: 可以在[Docker官方文档](https://docs.docker.com/engine/api/v1.30/)
+    中找到有关如何查询容器API的更多信息。
+
+  version: "1.16.5"
+  title: "岸桥 API"
+  contact:
+    email: "dmts@winning.com.cn"
+host: "portainer.domain"
+basePath: "/api"
+tags:
+- name: "auth"
+  description: "针对岸桥HTTP API进行身份验证"
+- name: "dockerhub"
+  description: "管理岸桥如何连接到DockerHub"
+- name: "endpoints"
+  description: "管理Docker环境"
+- name: "registries"
+  description: "管理Docker仓库"
+- name: "resource_controls"
+  description: "管理Docker资源的访问控制"
+- name: "settings"
+  description: "管理岸桥设定"
+- name: "status"
+  description: "岸桥实例的状态"
+- name: "stacks"
+  description: "管理Docker堆栈"
+- name: "users"
+  description: "管理用户"
+- name: "teams"
+  description: "管理团队"
+- name: "team_memberships"
+  description: "管理团队成员"
+- name: "templates"
+  description: "管理App模板"
+- name: "upload"
+  description: "上传文件"
+- name: "websocket"
+  description: "使用websocket创建exec会话"
+schemes:
+- "http"
+- "https"
+paths:
+  /auth:
+    post:
+      tags:
+      - "auth"
+      summary: "验证用户"
+      description: |
+        使用此端点使用用户名和密码对岸桥用户进行身份验证。
+        **访问策略**：公开
+      operationId: "AuthenticateUser"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "用于身份验证的凭证"
+        required: true
+        schema:
+          $ref: "#/definitions/AuthenticateUserRequest"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/AuthenticateUserResponse"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "Invalid credentials"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+        503:
+          description: "Authentication disabled"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "Authentication is disabled"
+  /dockerhub:
+    get:
+      tags:
+      - "dockerhub"
+      summary: "获得DockerHub信息"
+      description: |
+        使用此端点检索用于连接到DockerHub的信息
+        **访问策略**：已通过身份验证
+      operationId: "DockerHubInspect"
+      produces:
+      - "application/json"
+      parameters: []
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/DockerHubInspectResponse"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    put:
+      tags:
+      - "dockerhub"
+      summary: "更新DockerHub信息"
+      description: |
+        使用此端点来更新用于连接到DockerHub的信息
+        **访问策略**：管理员
+      operationId: "DockerHubUpdate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "DockerHub信息"
+        required: true
+        schema:
+          $ref: "#/definitions/DockerHubUpdateRequest"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /endpoints:
+    get:
+      tags:
+      - "endpoints"
+      summary: "列举端点"
+      description: |
+         根据当前用户授权列出所有端点。
+         如果使用管理员帐户，将返回所有端点，否则将仅返回授权的端点。
+         **访问策略**：受限制
+      operationId: "EndpointList"
+      produces:
+      - "application/json"
+      parameters: []
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/EndpointListResponse"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    post:
+      tags:
+      - "endpoints"
+      summary: "创建新的端点"
+      description: |
+        创建一个新的端点，该端点将用于管理Docker环境。
+        **访问策略**：管理员
+      operationId: "EndpointCreate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "端点详情"
+        required: true
+        schema:
+          $ref: "#/definitions/EndpointCreateRequest"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/EndpointCreateResponse"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+        503:
+          description: "Endpoint management disabled"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "端点管理已禁用"
+  /endpoints/{id}:
+    get:
+      tags:
+      - "endpoints"
+      summary: "检查端点"
+      description: |
+        检索有关端点的详细信息。
+        **访问策略**：管理员
+      operationId: "EndpointInspect"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "端点标识符"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/Endpoint"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效请求"
+        404:
+          description: "端点不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "端点不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    put:
+      tags:
+      - "endpoints"
+      summary: "更新端点"
+      description: |
+        更新端点。
+        **访问策略**: 管理员
+      operationId: "EndpointUpdate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "端点标识"
+        required: true
+        type: "integer"
+      - in: "body"
+        name: "body"
+        description: "端点详情"
+        required: true
+        schema:
+          $ref: "#/definitions/EndpointUpdateRequest"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        404:
+          description: "端点不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "端点不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+        503:
+          description: "端点管理已禁用"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "端点管理已禁用"
+    delete:
+      tags:
+      - "endpoints"
+      summary: "移除端点"
+      description: |
+        移除一个端点.
+        **访问策略**: 管理员
+      operationId: "EndpointDelete"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "端点标识"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效请求"
+        404:
+          description: "端点不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "端点不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+        503:
+          description: "端点管理已禁用"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "端点管理已禁用"
+  /endpoints/{id}/access:
+    put:
+      tags:
+      - "endpoints"
+      summary: "管理端点访问"
+      description: |
+         管理用户和团队对端点的访问。
+         **访问策略**：管理员
+      operationId: "EndpointAccessUpdate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "端点标识"
+        required: true
+        type: "integer"
+      - in: "body"
+        name: "body"
+        description: "授权详细信息"
+        required: true
+        schema:
+          $ref: "#/definitions/EndpointAccessUpdateRequest"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        404:
+          description: "端点不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "端点不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+
+  /endpoints/{endpointId}/stacks:
+    get:
+      tags:
+      - "stacks"
+      summary: "列举堆栈"
+      description: |
+         根据当前用户授权列出所有堆栈。
+         如果使用管理员帐户，将返回所有堆栈，否则仅返回用户有权访问的堆栈列表。
+         **访问策略**：受限制
+      operationId: "StackList"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "endpointId"
+        in: "path"
+        description: "端点标识"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/StackListResponse"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "访问资源被拒绝"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    post:
+      tags:
+      - "stacks"
+      summary: "部署新的堆栈"
+      description: |
+         将新堆栈部署到通过端点标识符指定的Docker环境中。
+         **访问策略**：受限制
+      operationId: "StackCreate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "endpointId"
+        in: "path"
+        description: "端点标识"
+        required: true
+        type: "integer"
+      - name: "method"
+        in: "query"
+        description: "堆栈部署方法。 可能的值: 字符串或仓库。"
+        required: true
+        type: "string"
+      - in: "body"
+        name: "body"
+        description: "堆栈详细信息。 何时使用"
+        required: true
+        schema:
+          $ref: "#/definitions/StackCreateRequest"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/StackCreateResponse"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        404:
+          description: "端点不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "端点不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /endpoints/{endpointId}/stacks/{id}:
+    get:
+      tags:
+      - "stacks"
+      summary: "检查堆栈"
+      description: |
+        检索有关堆栈的详细信息。
+        **访问策略**：受限制
+      operationId: "StackInspect"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "endpointId"
+        in: "path"
+        description: "端点标识"
+        required: true
+        type: "integer"
+      - name: "id"
+        in: "path"
+        description: "堆栈标识"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/Stack"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效请求"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+        404:
+          description: "堆栈不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "堆栈不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    put:
+      tags:
+      - "stacks"
+      summary: "更新堆栈"
+      description: |
+         更新堆栈。
+         **访问策略**：受限制
+      operationId: "StackUpdate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "endpointId"
+        in: "path"
+        description: "端点标识"
+        required: true
+        type: "integer"
+      - name: "id"
+        in: "path"
+        description: "堆栈标识"
+        required: true
+        type: "string"
+      - in: "body"
+        name: "body"
+        description: "堆栈详情"
+        required: true
+        schema:
+          $ref: "#/definitions/StackUpdateRequest"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        404:
+          description: "堆栈不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "堆栈不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    delete:
+      tags:
+      - "stacks"
+      summary: "移除堆栈"
+      description: |
+         移除堆栈。
+         **访问策略**：受限制
+      operationId: "StackDelete"
+      parameters:
+      - name: "endpointId"
+        in: "path"
+        description: "端点标识"
+        required: true
+        type: "integer"
+      - name: "id"
+        in: "path"
+        description: "堆栈标识"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效请求"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+        404:
+          description: "堆栈不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "堆栈不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /endpoints/{endpointId}/stacks/{id}/stackfile:
+    get:
+      tags:
+      - "stacks"
+      summary: "检索指定堆栈的堆栈文件的内容"
+      description: |
+         获取堆栈文件内容。
+         **访问策略**：受限制
+      operationId: "StackFileInspect"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "endpointId"
+        in: "path"
+        description: "端点标识"
+        required: true
+        type: "integer"
+      - name: "id"
+        in: "path"
+        description: "堆栈标识"
+        required: true
+        type: "string"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/StackFileInspectResponse"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效请求"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+        404:
+          description: "堆栈不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "堆栈不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /registries:
+    get:
+      tags:
+      - "registries"
+      summary: "列举注册"
+      description: |
+        根据当前用户授权列出所有注册点。
+         如果使用管理员帐户，将返回所有注册点，否则返回
+         仅返回授权的注册点。
+         **访问策略**：受限制
+      operationId: "RegistryList"
+      produces:
+      - "application/json"
+      parameters: []
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/RegistryListResponse"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    post:
+      tags:
+      - "registries"
+      summary: "创建一个新的注册点"
+      description: |
+        创建一个新的注册点.
+        **访问策略**：管理员
+      operationId: "RegistryCreate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "注册点详情"
+        required: true
+        schema:
+          $ref: "#/definitions/RegistryCreateRequest"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/RegistryCreateResponse"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        409:
+          description: "注册点已存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "已经为该URL定义了注册点"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /registries/{id}:
+    get:
+      tags:
+      - "registries"
+      summary: "检查注册点"
+      description: |
+         检索有关注册点的详细信息。
+         **访问策略**：管理员
+      operationId: "RegistryInspect"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "注册点标识"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/Registry"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效请求"
+        404:
+          description: "注册点不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "注册点不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    put:
+      tags:
+      - "registries"
+      summary: "更新注册点"
+      description: |
+        更新注册点。
+         **访问策略**：管理员
+      operationId: "RegistryUpdate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "注册点标识"
+        required: true
+        type: "integer"
+      - in: "body"
+        name: "body"
+        description: "注册点详情"
+        required: true
+        schema:
+          $ref: "#/definitions/RegistryUpdateRequest"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        404:
+          description: "注册点未找到"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "端点不存在"
+        409:
+          description: "注册点已存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "该URL已被注册点使用"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    delete:
+      tags:
+      - "registries"
+      summary: "移除注册点"
+      description: |
+         移除注册点。
+         **访问策略**：管理员
+      operationId: "RegistryDelete"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "注册点标识"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效请求"
+        404:
+          description: "注册点未找到"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "注册点未找到"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /registries/{id}/access:
+    put:
+      tags:
+      - "registries"
+      summary: "管理访问控制到注册点"
+      description: |
+         管理用户和团队对注册点的访问。
+         **访问策略**：管理员
+      operationId: "RegistryAccessUpdate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "注册点标识"
+        required: true
+        type: "integer"
+      - in: "body"
+        name: "body"
+        description: "授权详细信息"
+        required: true
+        schema:
+          $ref: "#/definitions/RegistryAccessUpdateRequest"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        404:
+          description: "注册点未找到"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "注册点未找到"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /resource_controls:
+    post:
+      tags:
+      - "resource_controls"
+      summary: "创建新的资源控制"
+      description: |
+         创建一个新的资源控件以限制对Docker资源的访问。
+         **访问策略**：受限制
+      operationId: "ResourceControlCreate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "资源控制详细信息"
+        required: true
+        schema:
+          $ref: "#/definitions/ResourceControlCreateRequest"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "访问资源被拒绝"
+        409:
+          description: "资源控制已存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "资源控制已应用于此资源"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /resource_controls/{id}:
+    put:
+      tags:
+      - "resource_controls"
+      summary: "更新资源控制"
+      description: |
+         更新资源控件。
+         **访问策略**：受限制
+      operationId: "ResourceControlUpdate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "资源控制标识符"
+        required: true
+        type: "integer"
+      - in: "body"
+        name: "body"
+        description: "资源控制详细信息"
+        required: true
+        schema:
+          $ref: "#/definitions/ResourceControlUpdateRequest"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "访问资源被拒绝"
+        404:
+          description: "资源控制不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "资源控制不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    delete:
+      tags:
+      - "resource_controls"
+      summary: "移除资源控制"
+      description: |
+         删除资源控件。
+         **访问策略**：受限制
+      operationId: "ResourceControlDelete"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "资源控制标识"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效请求"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "访问资源被拒绝"
+        404:
+          description: "资源控制不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "资源控制不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /settings:
+    get:
+      tags:
+      - "settings"
+      summary: "获得岸桥设定"
+      description: |
+        获得岸桥设定。
+        **访问策略**: 管理员
+      operationId: "SettingsInspect"
+      produces:
+      - "application/json"
+      parameters: []
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/Settings"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    put:
+      tags:
+      - "settings"
+      summary: "更新岸桥设定"
+      description: |
+         更新岸桥设置。
+         **访问策略**：管理员
+      operationId: "SettingsUpdate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "新设定"
+        required: true
+        schema:
+          $ref: "#/definitions/SettingsUpdateRequest"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /settings/public:
+    get:
+      tags:
+      - "settings"
+      summary: "检索岸桥的公共设置"
+      description: |
+         检索公共设置。 返回一小套不只保留给管理员的设置。
+         **访问策略**：公开
+      operationId: "PublicSettingsInspect"
+      produces:
+      - "application/json"
+      parameters: []
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/PublicSettingsInspectResponse"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /settings/authentication/checkLDAP:
+    put:
+      tags:
+      - "settings"
+      summary: "测试LDAP连接"
+      description: |
+         测试LDAP连接。
+         **访问策略**：管理员
+      operationId: "SettingsLDAPCheck"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "LDAP设定"
+        required: true
+        schema:
+          $ref: "#/definitions/SettingsLDAPCheckRequest"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /status:
+    get:
+      tags:
+      - "status"
+      summary: "检查岸桥设定"
+      description: |
+         检索岸桥状态。
+         **访问策略**：公开
+      operationId: "StatusInspect"
+      produces:
+      - "application/json"
+      parameters: []
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/Status"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /users:
+    get:
+      tags:
+      - "users"
+      summary: "列举用户"
+      description: |
+        列出岸桥用户。 非管理员用户将只能列出其他非管理员用户帐户。
+        **访问策略**：受限制
+      operationId: "UserList"
+      produces:
+      - "application/json"
+      parameters: []
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/UserListResponse"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    post:
+      tags:
+      - "users"
+      summary: "创建新用户"
+      description: |
+        创建一个新的岸桥用户。 只有团队负责人和管理员才能创建用户。 只有管理员可以
+        创建一个管理员用户帐户。
+        **访问策略**：受限制
+      operationId: "UserCreate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "用户详情"
+        required: true
+        schema:
+          $ref: "#/definitions/UserCreateRequest"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/UserCreateResponse"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "访问资源被拒绝"
+        409:
+          description: "User already exists"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "User already exists"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /users/{id}:
+    get:
+      tags:
+      - "users"
+      summary: "检查用户"
+      description: |
+         检索有关用户的详细信息。
+         **访问策略**：管理员
+      operationId: "UserInspect"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "用户标识"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/User"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效请求"
+        404:
+          description: "用户未找到"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "用户未找到"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    put:
+      tags:
+      - "users"
+      summary: "更新用户"
+      description: |
+         更新用户详细信息。 普通用户帐户只能更新其详细信息。
+         **访问策略**：已通过身份验证
+      operationId: "UserUpdate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "用户标识"
+        required: true
+        type: "integer"
+      - in: "body"
+        name: "body"
+        description: "用户详情"
+        required: true
+        schema:
+          $ref: "#/definitions/UserUpdateRequest"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "访问资源被拒绝"
+        404:
+          description: "用户未找到"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "用户未找到"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    delete:
+      tags:
+      - "users"
+      summary: "删除用户"
+      description: |
+         删除用户。
+         **访问策略**：管理员
+      operationId: "UserDelete"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "用户标识"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效请求"
+        404:
+          description: "用户未找到"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "用户未找到"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /users/{id}/memberships:
+    get:
+      tags:
+      - "users"
+      summary: "检查用户成员资格"
+      description: |
+         检查用户成员资格。
+         **访问策略**：已通过身份验证
+      operationId: "UserMembershipsInspect"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "用户标识"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/UserMembershipsResponse"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效请求"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "访问资源被拒绝"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+
+  /users/{id}/passwd:
+    post:
+      tags:
+      - "users"
+      summary: "检查用户的密码有效性"
+      description: |
+         检查提交的密码是否对指定用户有效。
+         **访问策略**：已通过身份验证
+      operationId: "UserPasswordCheck"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "用户标识"
+        required: true
+        type: "integer"
+      - in: "body"
+        name: "body"
+        description: "用户详情"
+        required: true
+        schema:
+          $ref: "#/definitions/UserPasswordCheckRequest"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/UserPasswordCheckResponse"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        404:
+          description: "用户未找到"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "用户未找到"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+
+  /users/admin/check:
+    get:
+      tags:
+      - "users"
+      summary: "检查管理员帐户是否存在"
+      description: |
+         检查数据库中是否存在管理员帐户。
+         **访问策略**：公开
+      operationId: "UserAdminCheck"
+      produces:
+      - "application/json"
+      parameters: []
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/UserListResponse"
+        404:
+          description: "用户未找到"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "用户未找到"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+
+  /users/admin/init:
+    post:
+      tags:
+      - "users"
+      summary: "初始化管理员帐户"
+      description: |
+         初始化“管理员”用户帐户。
+         **访问策略**：公开
+      operationId: "UserAdminInit"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "用户详情"
+        required: true
+        schema:
+          $ref: "#/definitions/UserAdminInitRequest"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        409:
+          description: "Admin user already initialized"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "User already exists"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+
+  /upload/tls/{certificate}:
+    post:
+      tags:
+      - "upload"
+      summary: "上传TLS文件"
+      description: |
+         使用此端点上载TLS文件。
+         **访问策略**：管理员
+      operationId: "UploadTLS"
+      consumes:
+      - multipart/form-data
+      produces:
+      - "application/json"
+      parameters:
+      - in: "path"
+        name: "certificate"
+        description: "TLS 文件类型. 可选值'ca', 'cert' 或 'key'."
+        required: true
+        type: "string"
+      - in: "query"
+        name: "folder"
+        description: "将存储TLS文件的文件夹。 如果不存在，将被创建。"
+        required: true
+        type: "string"
+      - in: "formData"
+        name: "file"
+        type: "file"
+        description: "要被上传的文件。"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+
+  /teams:
+    get:
+      tags:
+      - "teams"
+      summary: "团队列表"
+      description: |
+         列出团队。 对于非管理员用户，将仅列出他们所属的团队。
+         **访问策略**：受限制
+      operationId: "TeamList"
+      produces:
+      - "application/json"
+      parameters: []
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/TeamListResponse"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    post:
+      tags:
+      - "teams"
+      summary: "创建新团队"
+      description: |
+         创建一个新团队。
+         **访问策略**：管理员
+      operationId: "TeamCreate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "团队详情"
+        required: true
+        schema:
+          $ref: "#/definitions/TeamCreateRequest"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/TeamCreateResponse"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "访问资源被拒绝"
+        409:
+          description: "团队已存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "团队已存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /teams/{id}:
+    get:
+      tags:
+      - "teams"
+      summary: "检查团队"
+      description: |
+        检索有关团队的详细信息。 访问权限仅适用于该团队的管理员和负责人。
+        **访问策略**：受限制
+      operationId: "TeamInspect"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "团队标识"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/Team"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效请求"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "访问资源被拒绝"
+        404:
+          description: "团队不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "团队不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    put:
+      tags:
+      - "teams"
+      summary: "更新团队"
+      description: |
+         更新团队。
+         **访问策略**：管理员
+      operationId: "TeamUpdate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "团队标识"
+        required: true
+        type: "integer"
+      - in: "body"
+        name: "body"
+        description: "团队详情"
+        required: true
+        schema:
+          $ref: "#/definitions/TeamUpdateRequest"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        404:
+          description: "团队不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "团队不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    delete:
+      tags:
+      - "teams"
+      summary: "移除团队"
+      description: |
+         删除团队。
+         **访问策略**：管理员
+      operationId: "TeamDelete"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "团队标识"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效请求"
+        404:
+          description: "团队不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "团队不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+
+  /teams/{id}/memberships:
+    get:
+      tags:
+      - "teams"
+      summary: "检查团队成员"
+      description: |
+        检查团队成员资格。 访问权限仅适用于该团队的管理员和负责人。
+         **访问策略**：受限制
+      operationId: "TeamMembershipsInspect"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "团队标识"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/TeamMembershipsResponse"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效请求"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "访问资源被拒绝"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+
+  /team_memberships:
+    get:
+      tags:
+      - "team_memberships"
+      summary: "列举团队成员"
+      description: |
+         列出团队成员资格。 访问权限仅对管理员和团队负责人可用。
+         **访问策略**：受限制
+      operationId: "TeamMembershipList"
+      produces:
+      - "application/json"
+      parameters: []
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/TeamMembershipListResponse"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "访问资源被拒绝"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    post:
+      tags:
+      - "team_memberships"
+      summary: "建立新的团队成员"
+      description: |
+         创建一个新的团队成员身份。 访问仅对相关团队的管理员负责人可用。
+         **访问策略**：受限制
+      operationId: "TeamMembershipCreate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "团队成员详情"
+        required: true
+        schema:
+          $ref: "#/definitions/TeamMembershipCreateRequest"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/TeamMembershipCreateResponse"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "访问资源被拒绝"
+        409:
+          description: "团队成员已存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "该用户团队成员已存在."
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /team_memberships/{id}:
+    put:
+      tags:
+      - "team_memberships"
+      summary: "更新团队成员"
+      description: |
+         更新团队成员资格。 访问仅对相关团队的管理员负责人可用。
+         **访问策略**：受限制
+      operationId: "TeamMembershipUpdate"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "团队成员标识符"
+        required: true
+        type: "integer"
+      - in: "body"
+        name: "body"
+        description: "团队成员详细信息"
+        required: true
+        schema:
+          $ref: "#/definitions/TeamMembershipUpdateRequest"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效的请求数据格式"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "访问资源被拒绝"
+        404:
+          description: "团队成员不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "团队成员不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+    delete:
+      tags:
+      - "team_memberships"
+      summary: "移除团队成员"
+      description: |
+         移除团队成员身份。 访问仅对相关团队的管理员负责人可用。
+         **访问策略**：受限制
+      operationId: "TeamMembershipDelete"
+      parameters:
+      - name: "id"
+        in: "path"
+        description: "团队成员身份标识"
+        required: true
+        type: "integer"
+      responses:
+        200:
+          description: "成功"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "无效请求"
+        403:
+          description: "未授权"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "访问资源被拒绝"
+        404:
+          description: "团队成员不存在"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "团队成员不存在"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+  /templates:
+    get:
+      tags:
+      - "templates"
+      summary: "获得APP模板"
+      description: |
+         检索应用模板。
+         **访问策略**：已通过身份验证
+      operationId: "TemplateList"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "key"
+        in: "query"
+        required: true
+        description: "模板键。 有效值为'container'或'linuxserver.io'。"
+        type: "string"
+      responses:
+        200:
+          description: "成功"
+          schema:
+            $ref: "#/definitions/TemplateListResponse"
+        400:
+          description: "无效请求"
+          schema:
+            $ref: "#/definitions/GenericError"
+          examples:
+            application/json:
+              err: "不可用的查询格式"
+        500:
+          description: "服务端错误"
+          schema:
+            $ref: "#/definitions/GenericError"
+securityDefinitions:
+  jwt:
+    type: "apiKey"
+    name: "Authorization"
+    in: "header"
+definitions:
+  Team:
+    type: "object"
+    properties:
+      Id:
+        type: "integer"
+        example: 1
+        description: "团队标识"
+      Name:
+        type: "string"
+        example: "developers"
+        description: "团队名"
+  TeamMembership:
+    type: "object"
+    properties:
+      Id:
+        type: "integer"
+        example: 1
+        description: "成员标识"
+      UserID:
+        type: "integer"
+        example: 1
+        description: "用户标识"
+      TeamID:
+        type: "integer"
+        example: 1
+        description: "团队标识"
+      Role:
+        type: "integer"
+        example: 1
+        description: "团队角色（团队负责人1个，团队成员2个）"
+  User:
+    type: "object"
+    properties:
+      Id:
+        type: "integer"
+        example: 1
+        description: "用户标识"
+      Username:
+        type: "string"
+        example: "bob"
+        description: "用户名"
+      Role:
+        type: "integer"
+        example: 1
+        description: "用户角色（1个用于管理员帐户，2个用于普通帐户）"
+  Status:
+    type: "object"
+    properties:
+      Authentication:
+        type: "boolean"
+        example: true
+        description: "是否启用身份验证"
+      EndpointManagement:
+        type: "boolean"
+        example: true
+        description: "是否启用了端点管理"
+      Analytics:
+        type: "boolean"
+        example: true
+        description: "是否启用分析"
+      Version:
+        type: "string"
+        example: "1.16.5"
+        description: "岸桥API版本"
+  PublicSettingsInspectResponse:
+    type: "object"
+    properties:
+      LogoURL:
+        type: "string"
+        example: "https://mycompany.mydomain.tld/logo.png"
+        description: "徽标的URL，该徽标将显示在登录页面以及侧边栏顶部。 当值为空字符串时将使用默认的岸桥徽标"
+      DisplayDonationHeader:
+        type: "boolean"
+        example: true
+        description: "是否在标题中显示捐赠消息。"
+      DisplayExternalContributors:
+        type: "boolean"
+        example: false
+        description: "是否在UI中将外部模板贡献显示为子菜单。"
+      AuthenticationMethod:
+        type: "integer"
+        example: 1
+        description: "岸桥实例的主动身份验证方法。 有效值为：1（对于托管）或2（对于LDAP）。"
+      AllowBindMountsForRegularUsers:
+        type: "boolean"
+        example: false
+        description: "非管理员在创建容器时是否应该能够使用绑定安装"
+      AllowPrivilegedModeForRegularUsers:
+        type: "boolean"
+        example: true
+        description: "创建容器时非管理员是否应该能够使用特权模式"
+  TLSConfiguration:
+    type: "object"
+    properties:
+      TLS:
+        type: "boolean"
+        example: true
+        description: "使用 TLS"
+      TLSSkipVerify:
+        type: "boolean"
+        example: false
+        description: "跳过服务器TLS证书的验证"
+      TLSCACertPath:
+        type: "string"
+        example: "/data/tls/ca.pem"
+        description: "TLS CA证书文件的路径"
+      TLSCertPath:
+        type: "string"
+        example: "/data/tls/cert.pem"
+        description: "TLS客户端证书文件的路径"
+      TLSKeyPath:
+        type: "string"
+        example: "/data/tls/key.pem"
+        description: "TLS客户端密钥文件的路径"
+
+  LDAPSearchSettings:
+    type: "object"
+    properties:
+      BaseDN:
+        type: "string"
+        example: "dc=ldap,dc=domain,dc=tld"
+        description: "LDAP服务器将从中搜索用户的元素的专有名称"
+      Filter:
+        type: "string"
+        example: "(objectClass=account)"
+        description: "用于选择用户元素的可选LDAP搜索过滤器"
+      UserNameAttribute:
+        type: "string"
+        example: "uid"
+        description: "表示用户名的LDAP属性"
+
+  LDAPSettings:
+    type: "object"
+    properties:
+      ReaderDN:
+        type: "string"
+        example: "cn=readonly-account,dc=ldap,dc=domain,dc=tld"
+        description: "用于搜索用户的帐户"
+      Password:
+        type: "string"
+        example: "readonly-password"
+        description: "用于搜索用户的帐户密码"
+      URL:
+        type: "string"
+        example: "myldap.domain.tld:389"
+        description: "LDAP服务器的URL或IP地址"
+      TLSConfig:
+        $ref: "#/definitions/TLSConfiguration"
+      StartTLS:
+        type: "boolean"
+        example: true
+        description: "LDAP连接是否应使用StartTLS"
+      SearchSettings:
+        type: "array"
+        items:
+          $ref: "#/definitions/LDAPSearchSettings"
+
+  Settings:
+    type: "object"
+    properties:
+      TemplatesURL:
+        type: "string"
+        example: "https://raw.githubusercontent.com/portainer/templates/master/templates.json"
+        description: "导航到应用程序模板时将在UI中显示的模板的URL"
+      LogoURL:
+        type: "string"
+        example: "https://mycompany.mydomain.tld/logo.png"
+        description: "徽标的URL，该徽标将显示在登录页面以及侧边栏顶部。 当值为空字符串时将使用默认的岸桥徽标"
+      BlackListedLabels:
+        type: "array"
+        description: "标签名称和值的列表，将在查询容器时用于隐藏容器"
+        items:
+          $ref: "#/definitions/Settings_BlackListedLabels"
+      DisplayDonationHeader:
+        type: "boolean"
+        example: true
+        description: "是否在标题中显示捐赠消息。"
+      DisplayExternalContributors:
+        type: "boolean"
+        example: false
+        description: "是否在UI中将外部模板贡献显示为子菜单。"
+      AuthenticationMethod:
+        type: "integer"
+        example: 1
+        description: "Portainer实例的主动身份验证方法。 有效值为：1（对于托管）或2（对于LDAP）。"
+      LDAPSettings:
+        $ref: "#/definitions/LDAPSettings"
+      AllowBindMountsForRegularUsers:
+        type: "boolean"
+        example: false
+        description: "非管理员在创建容器时是否应该能够使用绑定安装"
+      AllowPrivilegedModeForRegularUsers:
+        type: "boolean"
+        example: true
+        description: "创建容器时非管理员是否应该能够使用特权模式"
+  Settings_BlackListedLabels:
+    properties:
+      name:
+        type: "string"
+        example: "com.foo"
+      value:
+        type: "string"
+        example: "bar"
+  Registry:
+    type: "object"
+    properties:
+      Id:
+        type: "integer"
+        example: 1
+        description: "注册点标识"
+      Name:
+        type: "string"
+        example: "my-registry"
+        description: "注册点名称"
+      URL:
+        type: "string"
+        example: "registry.mydomain.tld:2375"
+        description: "Docker注册点的URL或IP地址"
+      Authentication:
+        type: "boolean"
+        example: true
+        description: "是否启用了针对此注册点的身份验证"
+      Username:
+        type: "string"
+        example: "registry_user"
+        description: "用于对此注册点进行身份验证的用户名"
+      Password:
+        type: "string"
+        example: "registry_password"
+        description: "用于验证此注册点的密码"
+      AuthorizedUsers:
+        type: "array"
+        description: "授权使用此注册点的用户标识符列表"
+        items:
+          type: "integer"
+          example: 1
+          description: "用户标识"
+      AuthorizedTeams:
+        type: "array"
+        description: "授权使用此注册点的团队标识符列表"
+        items:
+          type: "integer"
+          example: 1
+          description: "团队标识"
+  Endpoint:
+    type: "object"
+    properties:
+      Id:
+        type: "integer"
+        example: 1
+        description: "端点标识"
+      Name:
+        type: "string"
+        example: "my-endpoint"
+        description: "端点名称"
+      URL:
+        type: "string"
+        example: "docker.mydomain.tld:2375"
+        description: "与此端点关联的Docker主机的URL或IP地址"
+      AuthorizedUsers:
+        type: "array"
+        description: "授权连接到此端点的用户标识符列表"
+        items:
+          type: "integer"
+          example: 1
+          description: "用户标识"
+      AuthorizedTeams:
+        type: "array"
+        description: "授权连接到此端点的团队标识符列表"
+        items:
+          type: "integer"
+          example: 1
+          description: "团队标识"
+  GenericError:
+    type: "object"
+    properties:
+      err:
+        type: "string"
+        example: "错误发生了"
+        description: "错误信息"
+  AuthenticateUserRequest:
+    type: "object"
+    required:
+    - "Password"
+    - "Username"
+    properties:
+      Username:
+        type: "string"
+        example: "admin"
+        description: "用户名"
+      Password:
+        type: "string"
+        example: "mypassword"
+        description: "密码"
+  AuthenticateUserResponse:
+    type: "object"
+    properties:
+      jwt:
+        type: "string"
+        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOjEsImV4cCI6MTQ5OTM3NjE1NH0.NJ6vE8FY1WG6jsRQzfMqeatJ4vh2TWAeeYfDhP71YEE"
+        description: "用于根据API进行身份验证的JWT令牌"
+  DockerHubInspectResponse:
+    type: "object"
+    properties:
+      Authentication:
+        type: "boolean"
+        example: true
+        description: "是否启用了针对DockerHub的身份验证"
+      Username:
+        type: "string"
+        example: "hub_user"
+        description: "用于对DockerHub进行身份验证的用户名"
+      Password:
+        type: "string"
+        example: "hub_password"
+        description: "用于对DockerHub进行身份验证的密码"
+  DockerHubUpdateRequest:
+    type: "object"
+    required:
+    - "Authentication"
+    - "Password"
+    - "Username"
+    properties:
+      Authentication:
+        type: "boolean"
+        example: true
+        description: "对DockerHub启用身份验证"
+      Username:
+        type: "string"
+        example: "hub_user"
+        description: "用于对DockerHub进行身份验证的用户名"
+      Password:
+        type: "string"
+        example: "hub_password"
+        description: "用于对DockerHub进行身份验证的密码"
+  EndpointCreateRequest:
+    type: "object"
+    required:
+    - "Name"
+    - "URL"
+    properties:
+      Name:
+        type: "string"
+        example: "my-endpoint"
+        description: "将用于标识此端点的名称"
+      URL:
+        type: "string"
+        example: "docker.mydomain.tld:2375"
+        description: "Docker主机的URL或IP地址"
+      PublicURL:
+        type: "string"
+        example: "docker.mydomain.tld:2375"
+        description: "可以访问暴露容器的URL或IP地址。如果未指定，则默认为URL"
+      TLS:
+        type: "boolean"
+        example: true
+        description: "要求TLS才能与此端点连接"
+      TLSSkipVerify:
+        type: "boolean"
+        example: false
+        description: "使用TLS时跳过服务器验证"
+      TLSSkipClientVerify:
+        type: "boolean"
+        example: false
+        description: "使用TLS时跳过客户端验证"
+  EndpointCreateResponse:
+    type: "object"
+    properties:
+      Id:
+        type: "integer"
+        example: 1
+        description: "端点编号"
+  EndpointListResponse:
+    type: "array"
+    items:
+      $ref: "#/definitions/Endpoint"
+  EndpointUpdateRequest:
+    type: "object"
+    properties:
+      Name:
+        type: "string"
+        example: "my-endpoint"
+        description: "将用于标识此端点的名称"
+      URL:
+        type: "string"
+        example: "docker.mydomain.tld:2375"
+        description: "Docker主机的URL或IP地址"
+      PublicURL:
+        type: "string"
+        example: "docker.mydomain.tld:2375"
+        description: "可以访问暴露容器的URL或IP地址。如果未指定，则默认为URL"
+      TLS:
+        type: "boolean"
+        example: true
+        description: "要求TLS才能与此端点连接"
+      TLSSkipVerify:
+        type: "boolean"
+        example: false
+        description: "使用TLS时跳过服务器验证"
+      TLSSkipClientVerify:
+        type: "boolean"
+        example: false
+        description: "使用TLS时跳过客户端验证"
+  EndpointAccessUpdateRequest:
+    type: "object"
+    properties:
+      AuthorizedUsers:
+        type: "array"
+        description: "授权连接到此端点的用户标识符列表"
+        items:
+          type: "integer"
+          example: 1
+          description: "用户标识"
+      AuthorizedTeams:
+        type: "array"
+        description: "授权连接到此端点的团队标识符列表"
+        items:
+          type: "integer"
+          example: 1
+          description: "团队标识"
+  RegistryCreateRequest:
+    type: "object"
+    required:
+    - "Authentication"
+    - "Name"
+    - "Password"
+    - "URL"
+    - "Username"
+    properties:
+      Name:
+        type: "string"
+        example: "my-registry"
+        description: "将用于标识此注册点的名称"
+      URL:
+        type: "string"
+        example: "registry.mydomain.tld:2375"
+        description: "Docker注册点的URL或IP地址"
+      Authentication:
+        type: "boolean"
+        example: true
+        description: "是否启用了针对此注册点的身份验证"
+      Username:
+        type: "string"
+        example: "registry_user"
+        description: "用于对此注册点进行身份验证的用户名"
+      Password:
+        type: "string"
+        example: "registry_password"
+        description: "用于验证此注册点的密码"
+  RegistryCreateResponse:
+    type: "object"
+    properties:
+      Id:
+        type: "integer"
+        example: 1
+        description: "注册点的ID"
+  RegistryListResponse:
+    type: "array"
+    items:
+      $ref: "#/definitions/Registry"
+  RegistryUpdateRequest:
+    type: "object"
+    required:
+    - "Name"
+    - "URL"
+    properties:
+      Name:
+        type: "string"
+        example: "my-registry"
+        description: "将用于标识此注册点的名称"
+      URL:
+        type: "string"
+        example: "registry.mydomain.tld:2375"
+        description: "Docker注册点的URL或IP地址"
+      Authentication:
+        type: "boolean"
+        example: true
+        description: "是否启用了针对此注册点的身份验证"
+      Username:
+        type: "string"
+        example: "registry_user"
+        description: "用于对此注册点进行身份验证的用户名"
+      Password:
+        type: "string"
+        example: "registry_password"
+        description: "用于验证此注册点的密码"
+  RegistryAccessUpdateRequest:
+    type: "object"
+    properties:
+      AuthorizedUsers:
+        type: "array"
+        description: "授权使用此注册点的用户标识符列表"
+        items:
+          type: "integer"
+          example: 1
+          description: "用户标识"
+      AuthorizedTeams:
+        type: "array"
+        description: "授权使用此注册点的团队标识符列表"
+        items:
+          type: "integer"
+          example: 1
+          description: "团队标识"
+  ResourceControlCreateRequest:
+    type: "object"
+    required:
+    - "ResourceID"
+    - "Type"
+    properties:
+      ResourceID:
+        type: "string"
+        example: "617c5f22bb9b023d6daab7cba43a57576f83492867bc767d1c59416b065e5f08"
+        description: "将在其上应用访问控制的Docker资源标识符"
+      Type:
+        type: "string"
+        example: "container"
+        description: "Docker资源的类型。 有效值为：容器，卷或服务"
+      AdministratorsOnly:
+        type: "boolean"
+        example: true
+        description: "将访问相关资源的权限限制为仅管理员"
+      Users:
+        type: "array"
+        description: "可以访问关联资源的用户标识符列表"
+        items:
+          type: "integer"
+          example: 1
+          description: "用户标识"
+      Teams:
+        type: "array"
+        description: "可以访问相关资源的团队标识符列表"
+        items:
+          type: "integer"
+          example: 1
+          description: "团队标识"
+      SubResourceIDs:
+        type: "array"
+        description: "将继承此访问控制的Docker资源列表"
+        items:
+          type: "string"
+          example: "617c5f22bb9b023d6daab7cba43a57576f83492867bc767d1c59416b065e5f08"
+          description: "Docker资源标识符"
+  ResourceControlUpdateRequest:
+    type: "object"
+    properties:
+      AdministratorsOnly:
+        type: "boolean"
+        example: false
+        description: "将访问相关资源的权限限制为仅管理员"
+      Users:
+        type: "array"
+        description: "可以访问关联资源的用户标识符列表"
+        items:
+          type: "integer"
+          example: 1
+          description: "用户标识"
+      Teams:
+        type: "array"
+        description: "可以访问相关资源的团队标识符列表"
+        items:
+          type: "integer"
+          example: 1
+          description: "团队标识"
+  SettingsUpdateRequest:
+    type: "object"
+    required:
+    - "TemplatesURL"
+    - "AuthenticationMethod"
+    properties:
+      TemplatesURL:
+        type: "string"
+        example: "http://172.16.0.176/docker/portainer/templates.json"
+        description: "导航到应用程序模板时将在UI中显示的模板的URL"
+      LogoURL:
+        type: "string"
+        example: "https://mycompany.mydomain.tld/logo.png"
+        description: "徽标的URL，该徽标将显示在登录页面以及侧边栏顶部。 当值为空字符串时将使用默认的岸桥徽标"
+      BlackListedLabels:
+        type: "array"
+        description: "标签名称和值的列表，将在查询容器时用于隐藏容器"
+        items:
+          $ref: "#/definitions/Settings_BlackListedLabels"
+      DisplayDonationHeader:
+        type: "boolean"
+        example: true
+        description: "是否在标题中显示捐赠消息。"
+      DisplayExternalContributors:
+        type: "boolean"
+        example: false
+        description: "是否在UI中将外部模板贡献显示为子菜单。"
+      AuthenticationMethod:
+        type: "integer"
+        example: 1
+        description: "岸桥实例的主动身份验证方法。 有效值为：1（对于托管）或2（对于LDAP）。"
+      LDAPSettings:
+        $ref: "#/definitions/LDAPSettings"
+      AllowBindMountsForRegularUsers:
+        type: "boolean"
+        example: true
+        description: "创建容器时，非管理员用户是否应该能够使用绑定安装"
+      AllowPrivilegedModeForRegularUsers:
+        type: "boolean"
+        example: true
+        description: "创建容器时，非管理员用户是否应能够使用特权模式"
+  UserCreateRequest:
+    type: "object"
+    required:
+    - "Password"
+    - "Role"
+    - "Username"
+    properties:
+      Username:
+        type: "string"
+        example: "bob"
+        description: "用户名"
+      Password:
+        type: "string"
+        example: "cg9Wgky3"
+        description: "密码"
+      Role:
+        type: "integer"
+        example: 1
+        description: "用户角色（1个用于管理员帐户，2个用于普通帐户）"
+  UserCreateResponse:
+    type: "object"
+    properties:
+      Id:
+        type: "integer"
+        example: 1
+        description: "用户ID"
+  UserListResponse:
+    type: "array"
+    items:
+      $ref: "#/definitions/User"
+  UserUpdateRequest:
+    type: "object"
+    properties:
+      Password:
+        type: "string"
+        example: "cg9Wgky3"
+        description: "密码"
+      Role:
+        type: "integer"
+        example: 1
+        description: "用户角色（1个用于管理员帐户，2个用于普通帐户）"
+  UserMembershipsResponse:
+    type: "array"
+    items:
+      $ref: "#/definitions/TeamMembership"
+  UserPasswordCheckRequest:
+    type: "object"
+    required:
+    - "Password"
+    properties:
+      Password:
+        type: "string"
+        example: "cg9Wgky3"
+        description: "密码"
+  UserPasswordCheckResponse:
+    type: "object"
+    properties:
+      valid:
+        type: "boolean"
+        example: true
+        description: "密码是否有效"
+  TeamCreateRequest:
+    type: "object"
+    required:
+    - "Name"
+    properties:
+      Name:
+        type: "string"
+        example: "developers"
+        description: "名称"
+  TeamCreateResponse:
+    type: "object"
+    properties:
+      Id:
+        type: "integer"
+        example: 1
+        description: "团队ID"
+  TeamListResponse:
+    type: "array"
+    items:
+      $ref: "#/definitions/Team"
+  TeamUpdateRequest:
+    type: "object"
+    required:
+    - "Name"
+    properties:
+      Name:
+        type: "string"
+        example: "developers"
+        description: "名称"
+  TeamMembershipsResponse:
+    type: "array"
+    items:
+      $ref: "#/definitions/TeamMembership"
+
+  TeamMembershipCreateRequest:
+    type: "object"
+    required:
+    - "UserID"
+    - "TeamID"
+    - "Role"
+    properties:
+      UserID:
+        type: "integer"
+        example: 1
+        description: "用户标识"
+      TeamID:
+        type: "integer"
+        example: 1
+        description: "团队标识"
+      Role:
+        type: "integer"
+        example: 1
+        description: "团队中用户的角色（1位领导者和2位常规成员）"
+  TeamMembershipCreateResponse:
+    type: "object"
+    properties:
+      Id:
+        type: "integer"
+        example: 1
+        description: "Id of the team membership"
+  TeamMembershipListResponse:
+    type: "array"
+    items:
+      $ref: "#/definitions/TeamMembership"
+  TeamMembershipUpdateRequest:
+    type: "object"
+    required:
+    - "UserID"
+    - "TeamID"
+    - "Role"
+    properties:
+      UserID:
+        type: "integer"
+        example: 1
+        description: "用户标识"
+      TeamID:
+        type: "integer"
+        example: 1
+        description: "团队标识"
+      Role:
+        type: "integer"
+        example: 1
+        description: "团队中用户的角色（1位领导者和2位常规成员）"
+  SettingsLDAPCheckRequest:
+    type: "object"
+    properties:
+      LDAPSettings:
+        $ref: "#/definitions/LDAPSettings"
+  UserAdminInitRequest:
+    type: "object"
+    properties:
+      Username:
+        type: "string"
+        example: "admin"
+        description: "管理员用户的用户名"
+      Password:
+        type: "string"
+        example: "admin-password"
+        description: "管理员用户的密码"
+  TemplateListResponse:
+    type: "array"
+    items:
+      $ref: "#/definitions/Template"
+  Template:
+    type: "object"
+    properties:
+      title:
+        type: "string"
+        example: "Nginx"
+        description: "模板标题"
+      description:
+        type: "string"
+        example: "高性能WEB服务器"
+        description: "模板描述"
+      logo:
+        type: "string"
+        example: "https://cloudinovasi.id/assets/img/logos/nginx.png"
+        description: "模板logo的URL"
+      image:
+        type: "string"
+        example: "nginx:latest"
+        description: "与模板关联的Docker镜像"
+  StackCreateRequest:
+    type: "object"
+    required:
+    - "Name"
+    - "SwarmID"
+    properties:
+      Name:
+        type: "string"
+        example: "myStack"
+        description: "堆栈名"
+      SwarmID:
+        type: "string"
+        example: "jpofkc0i9uo9wtx1zesuk649w"
+        description: "Swarm集群的集群标识"
+      StackFileContent:
+        type: "string"
+        example: "version: 3\n services:\n web:\n image:nginx"
+        description: "堆栈文件的内容。 使用'string'部署方法时必需。"
+      RepositoryURL:
+        type: "string"
+        example: "https://github.com/openfaas/faas"
+        description: "托管Stack文件的Git存储库的URL。 使用'仓库'部署方法时必需。"
+      ComposeFilePathInRepository:
+        type: "string"
+        example: "docker-compose.yml"
+        description: "Git存储库中Stack文件的路径。 使用'仓库'部署方法时必需。"
+      RepositoryAuthentication:
+        type: "boolean"
+        example: true
+        description: "使用基本身份验证来克隆Git存储库。"
+      RepositoryUsername:
+        type: "string"
+        example: "myGitUsername"
+        description: "基本身份验证中使用的用户名。 当RepositoryAuthentication为true时为必需。"
+      RepositoryPassword:
+        type: "string"
+        example: "myGitPassword"
+        description: "基本身份验证中使用的密码。 当RepositoryAuthentication为true时为必需。"
+      Env:
+        type: "array"
+        description: "堆栈部署期间使用的环境变量列表"
+        items:
+          $ref: "#/definitions/Stack_Env"
+  Stack_Env:
+    properties:
+      name:
+        type: "string"
+        example: "MYSQL_ROOT_PASSWORD"
+      value:
+        type: "string"
+        example: "password"
+  StackCreateResponse:
+    type: "object"
+    properties:
+      Id:
+        type: "string"
+        example: "myStack_jpofkc0i9uo9wtx1zesuk649w"
+        description: "堆栈名"
+  StackListResponse:
+    type: "array"
+    items:
+      $ref: "#/definitions/Stack"
+  Stack:
+    type: "object"
+    properties:
+      Id:
+        type: "string"
+        example: "myStack_jpofkc0i9uo9wtx1zesuk649w"
+        description: "堆栈标识"
+      Name:
+        type: "string"
+        example: "myStack"
+        description: "堆栈名"
+      EntryPoint:
+        type: "string"
+        example: "docker-compose.yml"
+        description: "堆栈文件路径"
+      SwarmID:
+        type: "string"
+        example: "jpofkc0i9uo9wtx1zesuk649w"
+        description: "堆叠所在的Swarm集群的集群标识"
+      ProjectPath:
+        type: "string"
+        example: "/data/compose/myStack_jpofkc0i9uo9wtx1zesuk649w"
+        description: "磁盘上指向托管Stack文件的存储库的路径"
+      Env:
+        type: "array"
+        description: "堆栈部署期间使用的环境变量列表"
+        items:
+          $ref: "#/definitions/Stack_Env"
+  StackUpdateRequest:
+    type: "object"
+    properties:
+      StackFileContent:
+        type: "string"
+        example: "version: 3\n services:\n web:\n image:nginx"
+        description: "堆栈文件的新内容。"
+      Env:
+        type: "array"
+        description: "堆栈部署期间使用的环境变量列表"
+        items:
+          $ref: "#/definitions/Stack_Env"
+      Prune:
+        type: "boolean"
+        example: false
+        description: "不再引用的修剪服务"
+  StackFileInspectResponse:
+    type: "object"
+    properties:
+      StackFileContent:
+        type: "string"
+        example: "version: 3\n services:\n web:\n image:nginx"
+        description: "堆栈文件的内容。"

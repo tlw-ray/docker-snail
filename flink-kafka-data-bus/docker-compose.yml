@@ -1,0 +1,58 @@
+version: "2.1"
+services:
+  jobmanager:
+    image: 172.16.0.183:8082/dcs/flink:1.10.0-scala_2.11
+    command: "jobmanager.sh start-foreground"
+    ports:
+      - 50382:8081
+    volumes:
+      - ./conf:/opt/flink/conf
+      - ./flink-checkpoints-directory:/tmp/flink-checkpoints-directory
+      - ./flink-savepoints-directory:/tmp/flink-savepoints-directory
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+  taskmanager:
+    image: 172.16.0.183:8082/dcs/flink:1.10.0-scala_2.11
+    depends_on:
+      - jobmanager
+    command: "taskmanager.sh start-foreground"
+    volumes:
+      - ./conf:/opt/flink/conf
+      - ./flink-checkpoints-directory:/tmp/flink-checkpoints-directory
+      - ./flink-savepoints-directory:/tmp/flink-savepoints-directory
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+  zookeeper:
+    image: 172.16.0.183:8082/dcs/zookeeper:3.4.6
+    ports:
+      - 2181:2181
+    volumes:
+      #- ./conf:/opt/zookeeper-3.4.6/conf
+      - ./zookeeper/data:/opt/zookeeper-3.4.6/data
+  zookeeperui:
+    image: 172.16.0.183:8082/dcs/zkui
+    environment:
+      ZKLIST: '172.16.6.168:2181'
+    ports:
+      - 50383:9090
+  kafka:
+    image: 172.16.0.183:8082/dcs/kafka:2.12-2.2.1
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://172.16.6.168:9092,OUTSIDE://172.16.6.168:9094
+      KAFKA_LISTENERS: INSIDE://:9092,OUTSIDE://:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_CREATE_TOPICS: "input:2:1, output:2:1"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_HOST_NAME: "172.16.72.127"
+    ports:
+      - 9094:9094
+      - 9092:9092
+    volumes:
+      - ./kafka:/kafka
+  kafkaui:
+    image: 172.16.0.183:8082/dcs/kafkaui:3.24.0
+    environment:
+      KAFKA_BROKERCONNECT: 172.16.6.168:9094
+    ports:
+      - 50384:9999

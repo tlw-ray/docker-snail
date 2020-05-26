@@ -1,0 +1,1 @@
+docker run --restart on-failure -p 18630:18630 -d --name AP_StreamSets streamsets/datacollector:3.16.0-latest

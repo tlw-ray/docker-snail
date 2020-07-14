@@ -1,0 +1,1 @@
+docker run -P loululin/dmanywhere:0.8.4-alpine

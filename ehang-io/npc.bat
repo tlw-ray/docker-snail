@@ -1,0 +1,1 @@
+docker run -d --name npc --net=host ffdfgdfg/npc -server=121.36.151.114:8024 -vkey=0izkihnquxzg9nww

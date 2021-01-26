@@ -6,3 +6,4 @@ docker run \
 --name AP_Portainer \
 --restart always \
 portainer/portainer
+pause

@@ -1,0 +1,9 @@
+docker exec -it facebook/prophet /bin/bash
+pip install plotly
+pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+pip uninstall ipython
+pip install ipython
+jupyter lab --allow-root
+# open jupyter lab prophet env 
+docker run -d --restart-always -p 8888:8888 registry.winning.com.cn/dcs/prophet-jupyter:1.0 jupyter lab --allow-root --ip 0.0.0.0
+

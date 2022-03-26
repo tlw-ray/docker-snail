@@ -5,33 +5,22 @@ services:
 
   db:
     image: postgres
+    user: "${UID}:${GID}"
     restart: always
     environment:
-      POSTGRES_PASSWORD: @Welcome1
+      POSTGRES_PASSWORD: '@Welcome1'
     ports:
       - 5432:5432
     volumes:
-      - postgre_data:/var/lib/postgresql/data
-
-  adminer:
-    image: adminer
-    restart: always
-    ports:
-      - 54320:8080
-      
+      - $PWD/postgre/data:/var/lib/postgresql/data
   pgadmin:
-    image: dpage/pgadmin4
+    image: dpage/pgadmin4:6.7
+    user: "${UID}:${GID}"
     restart: always
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin
-      PGADMIN_DEFAULT_PASSWORD: @Welcome1
+      PGADMIN_DEFAULT_EMAIL: tlw@163.com
+      PGADMIN_DEFAULT_PASSWORD: '@Welcome1'
     ports:
-      - 54321:80
-    links:
-      - db
+      - 5433:80
     volumes:
-      - pgadmin_data:/var/lib/pgadmin
-
-volumes:
-  postgre_data:
-  pgadmin_data:
+      - $PWD/pgadmin/data:/var/lib/pgadmin

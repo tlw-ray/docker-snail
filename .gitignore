@@ -3,3 +3,5 @@ draw/js/
 filezilla/config/
 emby/config/
 **/data/
+**/config/
+data-gov/amundsen/example/

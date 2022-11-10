@@ -4,4 +4,5 @@ filezilla/config/
 emby/config/
 **/data/
 **/config/
+**/logs/
 data-gov/amundsen/example/

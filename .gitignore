@@ -3,6 +3,12 @@ draw/js/
 filezilla/config/
 emby/config/
 **/data/
+**/db/
 **/config/
 **/logs/
 data-gov/amundsen/example/
+**/*.tar
+**/*.db
+**/*.log
+**/*.pxa
+**/*.

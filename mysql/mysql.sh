@@ -1,0 +1,1 @@
+docker run --name mysql -d -v $PWD/mysqld.cnf:/etc/mysql/mysql.conf.d/mysqld.cnf -v $PWD/data:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=root -p 3306:3306 mysql:5.7.37 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci

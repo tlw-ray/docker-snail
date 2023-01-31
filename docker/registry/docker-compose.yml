@@ -1,0 +1,25 @@
+version: '2'
+services:
+  registry-web:
+    image: hyper/docker-registry-web:v0.1.2
+    ports:
+      - 8080:8080
+    volumes:
+       - ./registry-web/conf:/conf:ro
+       - ./registry-web/data:/data
+    networks:
+      - registry-net
+    depends_on:
+       - registry
+  registry:
+    image: registry:2.8.1
+    ports:
+      - 5000:5000
+    volumes:
+      - ./registry:/etc/docker/registry:ro
+    networks:
+      - registry-net
+
+networks:
+  registry-net:
+#    driver: default

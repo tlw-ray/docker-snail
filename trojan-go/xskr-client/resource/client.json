@@ -1,0 +1,37 @@
+{
+    "run_type": "client",
+    "local_addr": "0.0.0.0",
+    "local_port": 1081,
+    "remote_addr": "xskr.top",
+    "remote_port": 443,
+    "password": [
+        "@Welcome1"
+    ],
+    "ssl": {
+        "sni": "xskr.top"
+    },
+    "mux" :{
+        "enabled": true
+    },
+    "websocket": {
+    "enabled": true,
+    "path": "/ws_path",
+    "hostname": "xskr.top"
+    },
+    "router":{
+        "enabled": true,
+        "bypass": [
+            "geoip:cn",
+            "geoip:private",
+            "geosite:cn",
+            "geosite:geolocation-cn"
+        ],
+        "block": [
+            "geosite:category-ads"
+        ],
+        "proxy": [
+            "geosite:geolocation-!cn"
+        ],
+        "default_policy": "proxy"
+    }
+}

@@ -8,6 +8,7 @@ emby/config/
 **/logs/
 data-gov/amundsen/example/
 **/*.tar
+**/*.zip
 **/*.db
 **/*.log
 **/*.pxa
